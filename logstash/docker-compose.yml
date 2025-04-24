@@ -1,0 +1,50 @@
+version: '3.7'
+services:
+  logstash:
+    build: .
+    container_name: logstash
+    ports:
+      - "5044:5044"    # untuk menerima dari beats
+      - "9600:9600"    # HTTP API monitoring
+    volumes:
+      - ./pipeline:/usr/share/logstash/pipeline
+      - ./logstash.yml:/usr/share/logstash/config/logstash.yml
+    networks:
+      - opensearch-net
+
+  opensearch:
+    image: opensearchproject/opensearch:2.12.0
+    container_name: opensearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - plugins.security.disabled=true  # Nonaktifkan auth untuk dev/test
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=MySecurePassword123!
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - opensearch-net
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:2.12.0
+    container_name: opensearch-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      - OPENSEARCH_HOSTS=http://opensearch:9200
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true  # Biar gak pakai login
+    networks:
+      - opensearch-net
+
+volumes:
+  opensearch-data:
+
+networks:
+  opensearch-net:
